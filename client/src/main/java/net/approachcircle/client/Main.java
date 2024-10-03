@@ -16,10 +16,21 @@ public class Main extends Application {
         StackPane root = new StackPane();
         BorderPane borderPane = new BorderPane();
         MessageClient.startPolling();
+        TextField messageField = getTextField();
+        borderPane.setBottom(messageField);
+        borderPane.setCenter(CentralTextArea.getInstance().getTextArea());
+        root.getChildren().add(borderPane);
+        Scene scene = new Scene(root, 320, 240);
+        stage.setTitle("JChat");
+        stage.setMaximized(true);
+        stage.setScene(scene);
+        stage.show();
+    }
+
+    private static TextField getTextField() {
         TextField messageField = new TextField();
         messageField.setOnKeyPressed(keyEvent -> {
             if (keyEvent.getCode() == KeyCode.ENTER) {
-                // textArea.appendText(messageField.getText() + "\n");
                 ObjectMapper mapper = new ObjectMapper();
                 Message message = new Message();
                 message.content = messageField.getText();
@@ -32,14 +43,7 @@ public class Main extends Application {
                 messageField.setText("");
             }
         });
-        borderPane.setBottom(messageField);
-        borderPane.setCenter(CentralTextArea.getInstance().getTextArea());
-        root.getChildren().add(borderPane);
-        Scene scene = new Scene(root, 320, 240);
-        stage.setTitle("JChat");
-        stage.setMaximized(true);
-        stage.setScene(scene);
-        stage.show();
+        return messageField;
     }
 
     public static void main(String[] args) {
