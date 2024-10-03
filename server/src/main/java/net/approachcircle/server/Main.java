@@ -16,7 +16,6 @@ public class Main {
         app.get("/message/query", ctx -> {
             if (messages.isEmpty()) {
                 ctx.result("");
-                // System.out.println("no messages, returning empty string");
                 return;
             }
             System.out.println("returning last message: " + messages.getLast());
