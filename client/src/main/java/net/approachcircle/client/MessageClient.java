@@ -17,7 +17,7 @@ public class MessageClient {
     private static PollingService pollService;
     private static boolean pollingFailed = false;
     private static int pollFailCount = 0;
-    private static int pollFailThreshold = 50;
+    private static final int pollFailThreshold = 50;
     private static CloseableHttpClient httpClient;
     public static void send(String json) {
         HttpPost post = new HttpPost(host + "/message/post");
