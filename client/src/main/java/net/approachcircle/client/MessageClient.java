@@ -15,7 +15,7 @@ import java.io.UnsupportedEncodingException;
 public class MessageClient {
     private static final String host = "http://127.0.0.1:1509";
     private static PollingService pollService;
-    private static int pollFailCount = 0;
+    private static boolean pollingFailed = false;
     public static void send(String json) {
         HttpPost post = new HttpPost(host + "/message/post");
         StringEntity entity;
@@ -42,17 +42,20 @@ public class MessageClient {
         try (CloseableHttpClient client = HttpClients.createDefault()) {
             response = client.execute(get);
         } catch (IOException e) {
-            //if (pollFailCount % 20 == 0) {
-            CentralTextArea.getInstance().putTextLine(String.format("[#%d] failed to poll (server may be down)", pollFailCount));
-            //}
-            pollFailCount++;
+            if (!pollingFailed) {
+                CentralTextArea.getInstance().putTextLine("failing to poll... (server may be down)");
+            }
+            pollingFailed = true;
             e.printStackTrace(System.err);
             return null;
         }
+        if (pollingFailed) {
+            CentralTextArea.getInstance().putTextLine("connection re-established");
+        }
+        pollingFailed = false; // execution will reach here unless an exception is thrown, because we return if so
         String responseString;
         try {
             responseString = EntityUtils.toString(response.getEntity());
-            // System.out.println("messages from poll: " + responseString);
         } catch (IOException e) {
             CentralTextArea.getInstance().putTextLine("failed to parse response on poll");
             e.printStackTrace(System.err);
@@ -77,11 +80,11 @@ public class MessageClient {
             }
         });
         pollService.setRestartOnFailure(true);
-        pollService.setDelay(Duration.seconds(5));
+        pollService.setDelay(Duration.ZERO);
         pollService.start();
     }
 
     public static void stopPolling() {
-        pollService.cancel();
+        pollService.stopPolling();
     }
 }
