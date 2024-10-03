@@ -1,6 +1,5 @@
 package net.approachcircle.client;
 
-import javafx.concurrent.Task;
 import javafx.util.Duration;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -17,7 +16,6 @@ import java.util.List;
 
 public class MessageClient {
     private static final String host = "http://127.0.0.1:1509";
-    private static List<String> messages = new ArrayList<>();
     private static PollingService pollService;
     private static int pollFailCount = 0;
     public static void send(String json) {
@@ -42,7 +40,7 @@ public class MessageClient {
 
     public static String poll() {
         HttpGet get = new HttpGet(host + "/message/query");
-        HttpResponse response = null;
+        HttpResponse response;
         try (CloseableHttpClient client = HttpClients.createDefault()) {
             response = client.execute(get);
         } catch (IOException e) {
@@ -53,7 +51,7 @@ public class MessageClient {
             e.printStackTrace(System.err);
             return null;
         }
-        String responseString = null;
+        String responseString;
         try {
             responseString = EntityUtils.toString(response.getEntity());
             // System.out.println("messages from poll: " + responseString);
@@ -87,9 +85,5 @@ public class MessageClient {
 
     public static void stopPolling() {
         pollService.cancel();
-    }
-
-    public static List<String> getMessages() {
-        return messages;
     }
 }

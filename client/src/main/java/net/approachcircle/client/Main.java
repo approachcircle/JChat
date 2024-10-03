@@ -4,7 +4,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import javafx.application.Application;
 import javafx.scene.Scene;
-import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.BorderPane;
@@ -15,7 +14,7 @@ import java.io.IOException;
 
 public class Main extends Application {
     @Override
-    public void start(Stage stage) throws IOException {
+    public void start(Stage stage) {
         StackPane root = new StackPane();
         BorderPane borderPane = new BorderPane();
         MessageClient.startPolling();
