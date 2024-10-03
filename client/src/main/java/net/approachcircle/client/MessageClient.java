@@ -16,6 +16,9 @@ public class MessageClient {
     private static final String host = "http://127.0.0.1:1509";
     private static PollingService pollService;
     private static boolean pollingFailed = false;
+    private static int pollFailCount = 0;
+    private static int pollFailThreshold = 50;
+    private static CloseableHttpClient httpClient;
     public static void send(String json) {
         HttpPost post = new HttpPost(host + "/message/post");
         StringEntity entity;
@@ -28,8 +31,8 @@ public class MessageClient {
         }
         post.setHeader("Content-type", "application/json");
         post.setEntity(entity);
-        try (CloseableHttpClient client = HttpClients.createDefault()) {
-            client.execute(post);
+        try {
+            httpClient.execute(post);
         } catch (IOException e) {
             CentralTextArea.getInstance().putTextLine("failed to post new message");
             e.printStackTrace(System.err);
@@ -39,14 +42,23 @@ public class MessageClient {
     public static String poll() {
         HttpGet get = new HttpGet(host + "/message/query");
         HttpResponse response;
-        try (CloseableHttpClient client = HttpClients.createDefault()) {
-            response = client.execute(get);
+        try {
+            response = httpClient.execute(get);
         } catch (IOException e) {
-            if (!pollingFailed) {
-                CentralTextArea.getInstance().putTextLine("failing to poll... (server may be down)");
-            }
             pollingFailed = true;
+            pollFailCount++;
             e.printStackTrace(System.err);
+            if (pollFailCount >= pollFailThreshold) {
+                CentralTextArea.getInstance().putTextLine("failing to poll... (server may be down)");
+                CentralTextArea.getInstance().putTextLine("backing off (10s)...");
+                pollFailCount = 0;
+                try {
+                    Thread.sleep(10000);
+                } catch (InterruptedException ignored) {
+                    throw new RuntimeException("backoff slumber interrupted");
+                }
+                CentralTextArea.getInstance().putTextLine("resuming...");
+            }
             return null;
         }
         if (pollingFailed) {
@@ -72,11 +84,15 @@ public class MessageClient {
     }
 
     public static void startPolling() {
+        httpClient = HttpClients.createDefault();
         pollService = new PollingService();
         pollService.setOnSucceeded((e) -> {
             String message = pollService.getAndConsumeResult();
             if (message != null && !message.isEmpty()) {
-                CentralTextArea.getInstance().putTextLine(message); // only get once (need to consume)
+                CentralTextArea.getInstance().putTextLine(message, LogSource.Self);
+                // will have to change impl drastically to accommodate messages from other clients
+                // including changing the message payload structure, logging impl, and probably
+                // message distribution on the server side
             }
         });
         pollService.setRestartOnFailure(true);
@@ -86,5 +102,10 @@ public class MessageClient {
 
     public static void stopPolling() {
         pollService.stopPolling();
+        try {
+            httpClient.close();
+        } catch (IOException e) {
+            CentralTextArea.getInstance().putTextLine("failed to close http client");
+        }
     }
 }
