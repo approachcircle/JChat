@@ -22,7 +22,9 @@ public class PollingService extends ScheduledService<String> {
     }
 
     public final void stopPolling() {
-        polling.set(false);
+        if (isPolling()) {
+            polling.set(false);
+        }
     }
 
     public final void consumeResult() {
