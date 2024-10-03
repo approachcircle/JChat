@@ -8,7 +8,7 @@ import javafx.concurrent.ScheduledService;
 import javafx.concurrent.Task;
 
 public class PollingService extends ScheduledService<String> {
-    private StringProperty result = new SimpleStringProperty();
+    private final StringProperty result = new SimpleStringProperty();
 
     public final String getResult() {
         return result.get();
@@ -51,8 +51,6 @@ public class PollingService extends ScheduledService<String> {
                         e.printStackTrace(System.err);
                     }
                 }
-                // System.out.println("received message is: " + message);
-                // System.out.println("something went wrong, returning nothing");
                 return "";
             }
         };
