@@ -1,6 +1,7 @@
 package net.approachcircle.client;
 
-import javafx.scene.control.TextArea;
+import javafx.concurrent.Task;
+import javafx.util.Duration;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
@@ -15,17 +16,18 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class MessageClient {
-    private static String host = "http://127.0.0.1:1509";
+    private static final String host = "http://127.0.0.1:1509";
     private static List<String> messages = new ArrayList<>();
-    private static volatile boolean isPolling = false;
+    private static PollingService pollService;
+    private static int pollFailCount = 0;
     public static void send(String json) {
         HttpPost post = new HttpPost(host + "/message/post");
         StringEntity entity;
         try {
             entity = new StringEntity(json);
         } catch (UnsupportedEncodingException e) {
-            System.err.println("unsupported encoding on message");
-            e.printStackTrace();
+            CentralTextArea.getInstance().putTextLine("unsupported encoding on message");
+            e.printStackTrace(System.err);
             return;
         }
         post.setHeader("Content-type", "application/json");
@@ -33,8 +35,8 @@ public class MessageClient {
         try (CloseableHttpClient client = HttpClients.createDefault()) {
             client.execute(post);
         } catch (IOException e) {
-            System.err.println("failed to post new message");
-            e.printStackTrace();
+            CentralTextArea.getInstance().putTextLine("failed to post new message");
+            e.printStackTrace(System.err);
         }
     }
 
@@ -44,42 +46,47 @@ public class MessageClient {
         try (CloseableHttpClient client = HttpClients.createDefault()) {
             response = client.execute(get);
         } catch (IOException e) {
-            System.err.println("failed to poll");
-            e.printStackTrace();
+            //if (pollFailCount % 20 == 0) {
+            CentralTextArea.getInstance().putTextLine(String.format("[#%d] failed to poll (server may be down)", pollFailCount));
+            //}
+            pollFailCount++;
+            e.printStackTrace(System.err);
             return null;
         }
         String responseString = null;
         try {
             responseString = EntityUtils.toString(response.getEntity());
+            // System.out.println("messages from poll: " + responseString);
         } catch (IOException e) {
-            System.err.println("failed to parse response on poll");
-            e.printStackTrace();
+            CentralTextArea.getInstance().putTextLine("failed to parse response on poll");
+            e.printStackTrace(System.err);
             return null;
         }
         try {
             EntityUtils.consume(response.getEntity());
         } catch (IOException e) {
             System.err.println("failed to consume response on poll");
-            e.printStackTrace();
+            e.printStackTrace(System.err);
             return null;
         }
         return responseString;
     }
 
-    public static void startPolling(TextArea textArea) {
-        isPolling = true;
-        new Thread(() -> {
-            while (isPolling) {
-                String message = poll();
-                if (message != null) {
-                    textArea.appendText(message); //TODO: not allowed unfortunately, either use a 'Service' or a 'Task'
-                }
+    public static void startPolling() {
+        pollService = new PollingService();
+        pollService.setOnSucceeded((e) -> {
+            String message = pollService.getAndConsumeResult();
+            if (message != null && !message.isEmpty()) {
+                CentralTextArea.getInstance().putTextLine(message); // only get once (need to consume)
             }
-        }).start();
+        });
+        pollService.setRestartOnFailure(true);
+        pollService.setDelay(Duration.seconds(5));
+        pollService.start();
     }
 
     public static void stopPolling() {
-        isPolling = false;
+        pollService.cancel();
     }
 
     public static List<String> getMessages() {

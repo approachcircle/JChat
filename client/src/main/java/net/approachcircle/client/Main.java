@@ -1,5 +1,7 @@
 package net.approachcircle.client;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.scene.control.TextArea;
@@ -16,22 +18,29 @@ public class Main extends Application {
     public void start(Stage stage) throws IOException {
         StackPane root = new StackPane();
         BorderPane borderPane = new BorderPane();
-        TextArea textArea = new TextArea();
-        textArea.setEditable(false);
-        MessageClient.startPolling(textArea);
+        MessageClient.startPolling();
         TextField messageField = new TextField();
         messageField.setOnKeyPressed(keyEvent -> {
             if (keyEvent.getCode() == KeyCode.ENTER) {
                 // textArea.appendText(messageField.getText() + "\n");
-                MessageClient.send(String.format("{\"content\": \"%s\"", messageField.getText()));
+                ObjectMapper mapper = new ObjectMapper();
+                Message message = new Message();
+                message.content = messageField.getText();
+                try {
+                    MessageClient.send(mapper.writeValueAsString(message));
+                } catch (JsonProcessingException e) {
+                    CentralTextArea.getInstance().putTextLine("error parsing outgoing message as json");
+                    e.printStackTrace(System.err);
+                }
                 messageField.setText("");
             }
         });
         borderPane.setBottom(messageField);
-        borderPane.setCenter(textArea);
+        borderPane.setCenter(CentralTextArea.getInstance().getTextArea());
         root.getChildren().add(borderPane);
         Scene scene = new Scene(root, 320, 240);
-        stage.setTitle("Hello!");
+        stage.setTitle("JChat");
+        stage.setMaximized(true);
         stage.setScene(scene);
         stage.show();
     }
